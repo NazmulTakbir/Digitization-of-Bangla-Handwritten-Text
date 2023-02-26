@@ -12,4 +12,8 @@ train_loader, train_size = get_word_loader('Datasets/BanglaWriting/train',
                                            'Datasets/BanglaWriting/train/labels.csv',
                                            batch_size=256)
 
-student.train(train_loader)
+val_loader, val_size = get_word_loader('Datasets/BanglaWriting/val', 
+                                           'Datasets/BanglaWriting/val/labels.csv',
+                                           batch_size=256)
+
+student.train(train_loader, val_loader)

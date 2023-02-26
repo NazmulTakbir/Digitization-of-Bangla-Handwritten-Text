@@ -1,5 +1,47 @@
 from .utils import normalize_word, ads_grapheme_extraction, skip_chars, merge_csv_files, get_graphemes_dict
 import json
+import torch
+
+def decode_prediction(pred, inv_graphemes_dict):
+    grapheme_list = []
+    grapheme_id_list = []
+
+    for i in range(len(pred)):
+        if pred[i] != 0 and (i == 0 or pred[i] != pred[i-1]):
+            grapheme_list.append(inv_graphemes_dict[pred[i]])
+            grapheme_id_list.append(pred[i])
+
+    return grapheme_id_list, ''.join(grapheme_list)
+
+def decode_label(label, inv_graphemes_dict):
+    decoded = []
+    for i in range(len(label)):
+        if label[i] != 0:
+            decoded.append(inv_graphemes_dict[label[i]])
+    return ''.join(decoded)
+
+def words_to_labels(words, graphemes_dict):
+    labels = []
+    lengths = []
+    maxlen = 0
+    for word in words:
+        word = normalize_word(word)
+        label = []
+        for grapheme in ads_grapheme_extraction(word):
+            label.append(graphemes_dict[grapheme])
+        labels.append(label)
+        lengths.append(len(label))
+        maxlen = max(len(label), maxlen)
+
+    # pad all labels to the same length - maxlen of current batch
+    for i in range(len(labels)):
+        labels[i] = labels[i] + [0]*(maxlen-len(labels[i]))
+    
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    labels = torch.tensor(labels, dtype=torch.long).to(device)
+    lengths = torch.tensor(lengths, dtype=torch.long).to(device)
+
+    return labels, lengths
 
 def extract_grapheme_labels(label_files_paths, graphemes_dict=None):
     """
