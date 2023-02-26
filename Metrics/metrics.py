@@ -5,17 +5,21 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 import numpy as np
 
-def print_metric(name, value):
-    print(f"{name.rjust(35)}: {value:.4f}")
+def print_metric(name, value, round_digits=4):
+    print(f"{name.rjust(40)}: {str(round(value, round_digits)).rjust(10)}")
     
 def accuracy_metrics(y_true, y_pred, n_classes, target_names, final_action='print'):
-    report = classification_report(y_true, y_pred, labels=np.arange(1, n_classes), 
-                                   zero_division=0, output_dict=True, 
-                                   target_names=target_names)
-
-    f1_micro = f1_score(y_true, y_pred, average='micro', zero_division=0)
-    f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
-    accuracy = accuracy_score(y_true, y_pred)
+    try:
+        report = classification_report(y_true, y_pred, labels=np.arange(1, n_classes), 
+                                    zero_division=0, output_dict=True, 
+                                    target_names=target_names)
+        f1_micro = f1_score(y_true, y_pred, average='micro', zero_division=0)
+        f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
+        accuracy = accuracy_score(y_true, y_pred)
+    except:
+        f1_micro = 0
+        f1_macro = 0
+        accuracy = 0
 
     if final_action == 'print':
         print_metric('Accuracy', accuracy)
@@ -27,7 +31,6 @@ def accuracy_metrics(y_true, y_pred, n_classes, target_names, final_action='prin
             'accuracy': accuracy,
             'f1_micro': f1_micro,
             'f1_macro': f1_macro,
-            'report': report
         }
     else:
         raise ValueError('final_action must be either "print" or "return"')
@@ -69,9 +72,9 @@ def recognition_metrics(predictions, labels, final_action='print', res_file_path
     }
     
     if final_action.lower().strip() == 'print':
-        print_metric('Absolute Word Match Count', results['abs_match'])
+        print_metric('Absolute Word Match Count', results['abs_match'], 0)
         print_metric('Word Recognition Rate (WRR)', results['wrr'])
-        print_metric('Total Normal Edit Distance (NED)', results['total_ned'])
+        print_metric('Normal Edit Distance (NED)', int(results['total_ned']), 0)
         print_metric('Character Recognition Rate (CRR)', results['crr'])
 
     elif final_action.lower().strip() == 'return':

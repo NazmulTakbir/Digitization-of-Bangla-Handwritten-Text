@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 from torch.utils import data
-
+from Graphemes.utils import skip_chars
 class WordDataset(data.Dataset):
     def __init__(self, img_dir, label_file_path, inp_h=32, inp_w=128, transform=None):
         """
@@ -23,7 +23,16 @@ class WordDataset(data.Dataset):
         img_names = [line.split(",")[0] for line in label_file]
         img_paths = [os.path.join(img_dir, img_name) for img_name in img_names]
         words = [line[len(img_names[0])+1:].strip() for line in label_file]
-        self.data = list(zip(img_paths, words))
+
+        filtered_words = []
+        filtered_img_paths = []
+        for i, word in enumerate(words):
+            if any((c in skip_chars) for c in word):
+                continue
+            filtered_words.append(word)
+            filtered_img_paths.append(img_paths[i])
+
+        self.data = list(zip(filtered_img_paths, filtered_words))
         
     def __len__(self):
         return len(self.data)

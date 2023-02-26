@@ -10,6 +10,6 @@ student  = Student(graphemes_dict)
 
 train_loader, train_size = get_word_loader('Datasets/BanglaWriting/train', 
                                            'Datasets/BanglaWriting/train/labels.csv',
-                                           batch_size=2)
+                                           batch_size=256)
 
 student.train(train_loader)

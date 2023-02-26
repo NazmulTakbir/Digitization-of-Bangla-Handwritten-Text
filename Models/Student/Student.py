@@ -108,16 +108,14 @@ class Student:
                 self.optimizer.step()
 
                 self.save_mini_batch_results(probs, labels)
-                break
         
             self.scheduler.step()
             self.print_epoch_stats(epoch)
-            break
     
     def save_mini_batch_results(self, probs, labels):
         _, preds = probs.max(2)
         preds = preds.transpose(1, 0).contiguous().detach().cpu().numpy()
-        labels = labels.detach().numpy()
+        labels = labels.detach().cpu().numpy()
 
         for pred, label in zip(preds, labels):
             grapheme_id_list, grapheme = self.decode_prediction(pred)
