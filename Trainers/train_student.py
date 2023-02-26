@@ -3,8 +3,6 @@ import json
 from Models.Student.Student import Student
 from DataManager.WordLoader import get_word_loader
 
-# from DataManager.WordLoader import get_word_loader
-
 with open('Graphemes/Extracted/graphemes_BanglaWriting.json', 'r') as f:
     graphemes_dict = json.load(f)
 
