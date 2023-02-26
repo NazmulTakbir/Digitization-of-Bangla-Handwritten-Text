@@ -120,7 +120,7 @@ class Student:
         sample = np.random.choice(total, sample_size, replace=False)
         print("Predicted | Actual:")
         for i in sample:
-            print(f"{self.decoded_preds[i]} | {self.decoded_labels[i]}")
+            print(f"{self.decoded_preds[i]} | {self.decoded_labels[i]}", end=" -- ")
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
