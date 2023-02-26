@@ -1,4 +1,5 @@
-from utils import normalize_word, ads_grapheme_extraction, skip_chars, merge_csv_files, get_graphemes_dict
+from .utils import normalize_word, ads_grapheme_extraction, skip_chars, merge_csv_files, get_graphemes_dict
+import json
 
 def extract_grapheme_labels(label_files_paths, graphemes_dict=None):
     """
@@ -51,11 +52,25 @@ def extract_grapheme_labels(label_files_paths, graphemes_dict=None):
 
 if __name__ == '__main__':
     dataset_name = 'BanglaWriting'
-    train = f'../Datasets/{dataset_name}/train/labels.csv'
-    val = f'../Datasets/{dataset_name}/val/labels.csv'
+    train = f'Datasets/{dataset_name}/train/labels.csv'
+    val = f'Datasets/{dataset_name}/val/labels.csv'
+
+    graphemes_dict = extract_grapheme_labels([train, val])['graphemes_dict']
     inv_grapheme_dict = extract_grapheme_labels([train, val])['inv_grapheme_dict']
+
+    with open(f"graphemes_{dataset_name}.json", "w") as f:
+        json.dump(graphemes_dict, f)
+
+    with open(f"inv_graphemes_{dataset_name}.json", "w") as f:
+        json.dump(inv_grapheme_dict, f)
+
+    with open(f"graphemes_{dataset_name}.txt", "w") as f:
+        for grapheme in graphemes_dict:
+            f.write(grapheme + "---" + str(graphemes_dict[grapheme]) + "\n")
+
+    with open(f"inv_graphemes_{dataset_name}.txt", "w") as f:
+        for grapheme in inv_grapheme_dict:
+            f.write(str(grapheme) + "---" + inv_grapheme_dict[grapheme] + "\n")
     
-    graphemes = open(f"graphemes_{dataset_name}.txt", "w")
-    for key in inv_grapheme_dict:
-        graphemes.write(inv_grapheme_dict[key] + "\n")
-    graphemes.close()
+
+    

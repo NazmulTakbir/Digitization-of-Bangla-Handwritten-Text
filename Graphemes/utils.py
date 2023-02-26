@@ -3,6 +3,8 @@ skip_chars = set(' θπ') | english_alphanumeric
 
 def merge_csv_files(csv_files):
     # merge by concatenating lines
+    if isinstance(csv_files, str):
+        csv_files = [csv_files]
     lines = []
     for csv_file in csv_files:
         with open(csv_file) as f:

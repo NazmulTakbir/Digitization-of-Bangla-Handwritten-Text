@@ -2,9 +2,9 @@ from torch import nn
 from torch.nn.intrinsic import qat
 from torch import quantization
 
-from VGGExtractor import VGG_FeatureExtractor
-from VGGExtractorQuantized import VGGQuantized_FeatureExtractor
-from BiLSTM import BidirectionalLSTM
+from .VGGExtractor import VGG_FeatureExtractor
+from .VGGExtractorQuantized import VGGQuantized_FeatureExtractor
+from .BiLSTM import BidirectionalLSTM
 
 class CRNN(nn.Module):
     def __init__(self, extractor_type, nclass, hidden_size=256, qatconfig=None, bias=True):
@@ -32,15 +32,14 @@ class CRNN(nn.Module):
 
     def forward(self, x):
         x = x.float()
-        
-        x = self.backbone(x)        
+        x = self.backbone(x)    
         x = self.rnn(x)
         
         T, b, h = x.size()
         x = x.view(T * b, h)
         x = self.embedding(x)  
         x = x.view(T, b, -1)
-        
+
         return x
     
     def _initialize_weights(self, bias=True):
@@ -66,6 +65,3 @@ class CRNN(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.zeros_(m.bias)
-
-def get_crnn(n_class, qatconfig=None, bias=True):
-    return CRNN(n_class, qatconfig=qatconfig, bias=bias)
