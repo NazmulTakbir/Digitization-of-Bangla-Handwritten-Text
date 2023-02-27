@@ -90,11 +90,11 @@ class Student:
         
             self.scheduler.step()
             self.print_stats('Train')
-            self.validate(val_loader)
+            self.validate(epoch, val_loader)
             print("_"*75)
     
-    def validate(self, val_loader):
-        self.init_epoch(train=False)
+    def validate(self, epoch, val_loader):
+        self.init_epoch(epoch, train=False)
         with torch.no_grad():
             print("Validating:")
             for images, words in tqdm(val_loader):
