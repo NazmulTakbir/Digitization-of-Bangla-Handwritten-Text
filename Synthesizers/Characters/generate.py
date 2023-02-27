@@ -3,15 +3,19 @@ import os
 import shutil 
 import numpy as np
 import random
+import json
+from tqdm import tqdm
 
-if os.path.exists('Images'):
-    shutil.rmtree('Images')
-os.mkdir('Images')
+dst = 'Datasets/SyntheticCharacters/all'
+if os.path.exists(dst):
+    shutil.rmtree(dst)
+os.mkdir(dst)
 
-f = open('graphemes.txt', 'r', encoding='utf-8').readlines()
-f = [x[:-1] for x in f]
+graphemes_dict = 'Graphemes/Extracted/graphemes_bw_bnhtrd_syn.json'
+graphemes_dict = json.load(open(graphemes_dict, 'r', encoding='utf-8'))
 
-font_files = os.listdir('fonts')
+fonts_root = 'Synthesizers/fonts'
+font_files = os.listdir(fonts_root)
 font_files.sort()
 
 def crop(img, b_color):
@@ -34,26 +38,19 @@ def crop(img, b_color):
 
     return img
 
-# some fonts have problems with some graphemes. for example font 3 has problems with 
-# grapheme 16, 17, 18, 19. so we skip them
-problems = {1: [], 2: [], 3: [16,17,18,19], 4: [], 5: [], 6: [165], 7: [], 
-            8: [165], 9: [], 10: [], 11: [], 12: [18], 13: [165], 
-            14: [3,7,8,12,14,16,17,18,19], 15: [18], 16: [18], 
-            17: [3,7,8,12,14,16,17,18,19], 18: [], 19: [], 20: [], 21: [], 
-            22: [], 23: [165], 24: []}
+# some fonts have problems with some graphemes. for example font 14 has problems with 
+# grapheme 4,9,10,14,17,20,21,23,25. so we skip them
+problems = {1: [], 2: [], 3: [20,21,22,23,24,25], 4: [], 5: [], 6: [219], 7: [], 
+            8: [219], 9: [], 10: [], 11: [], 12: [23], 13: [219], 
+            14: [4,9,10,14,17,20,21,23,25], 15: [23], 16: [23], 
+            17: [4,9,10,14,17,20,21,23,25], 18: [], 19: [], 20: [], 21: [], 
+            22: [], 23: [219], 24: []}
 
-# the following graphemes are written to a picture properly in windows OS. In linux
-# they are written by unwanted "dotted circular regions"
-# the images for these graphemes were generated separately in windows
-windows_only = [158, 164, 156, 160, 157, 22, 159, 153, 155, 161, 154, 152, 163, 162, 23, 21]
-
-for _ in range(10):
-    for i, char in enumerate(f, 1):
+for grapheme, grapheme_id in tqdm(graphemes_dict.items()):
+    for _ in range(10):
         for font_file in font_files:
-            if i in windows_only:
-                continue
             font_code = int(font_file.split('.')[0])
-            if i in problems[font_code]:
+            if grapheme_id in problems[font_code]:
                 continue
 
             b_color = random.randint(175, 255)
@@ -61,10 +58,10 @@ for _ in range(10):
 
             image = Image.new("L", (300, 100), (b_color))
             font_size = random.randint(20, 40)
-            font = ImageFont.truetype(os.path.join('fonts', font_file), font_size)
+            font = ImageFont.truetype(os.path.join(fonts_root, font_file), font_size)
             draw = ImageDraw.Draw(image)
-            draw.text((30, 20), char, font=font, fill=(t_color))
+            draw.text((30, 20), grapheme, font=font, fill=(t_color))
             image = crop(image, b_color)
 
             id = str(random.randint(1, 1e6)).zfill(6)
-            image.save(f"Images/{str(i).zfill(3)}_{font_file.split('.')[0]}_{id}.png")
+            image.save(f"{dst}/{str(grapheme_id).zfill(3)}_{font_file.split('.')[0]}_{id}.png")

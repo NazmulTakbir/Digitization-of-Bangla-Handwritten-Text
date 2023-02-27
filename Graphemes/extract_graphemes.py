@@ -1,6 +1,7 @@
 from .utils import normalize_word, ads_grapheme_extraction, skip_chars, merge_csv_files, get_graphemes_dict
 import json
 import torch
+from tqdm import tqdm
 
 def decode_prediction(pred, inv_graphemes_dict):
     grapheme_list = []
@@ -61,7 +62,7 @@ def extract_grapheme_labels(label_files_paths, graphemes_dict=None):
 
     lines = merge_csv_files(label_files_paths)
     filenames = [line.split(",")[0] for line in lines]
-    words_raw = [line[len(filenames[0])+1:] for line in lines]
+    words_raw = [line[len(line.split(",")[0])+1:] for line in lines]
 
     if graphemes_dict is None:
         graphemes_dict = get_graphemes_dict(words_raw)
@@ -93,12 +94,18 @@ def extract_grapheme_labels(label_files_paths, graphemes_dict=None):
     }
 
 if __name__ == '__main__':
-    dataset_name = 'BanglaWriting'
-    train = f'Datasets/{dataset_name}/train/labels.csv'
-    val = f'Datasets/{dataset_name}/val/labels.csv'
+    bw_train = f'Datasets/BanglaWriting/train/labels.csv'
+    bw_val = f'Datasets/BanglaWriting/val/labels.csv'
+    bnhtrd_train = f'Datasets/Bn-HTRd/train/labels.csv'
+    bnhtrd_val = f'Datasets/Bn-HTRd/val/labels.csv'
+    syn_words = f'Datasets/SyntheticWords/labels.csv'
 
-    graphemes_dict = extract_grapheme_labels([train, val])['graphemes_dict']
-    inv_grapheme_dict = extract_grapheme_labels([train, val])['inv_grapheme_dict']
+    all = [bw_train, bw_val, bnhtrd_train, bnhtrd_val, syn_words]
+    dataset_name = 'bw_bnhtrd_syn'
+
+    res = extract_grapheme_labels(all)
+    graphemes_dict = res['graphemes_dict']
+    inv_grapheme_dict = res['inv_grapheme_dict']
 
     with open(f"graphemes_{dataset_name}.json", "w") as f:
         json.dump(graphemes_dict, f)

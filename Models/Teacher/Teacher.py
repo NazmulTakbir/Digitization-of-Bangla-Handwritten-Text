@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import time
 import numpy as np
+from tqdm import tqdm
 class Teacher():
 
     def __init__(self, teacher_type, n_classes):
@@ -20,15 +21,19 @@ class Teacher():
 
         self.model.to(self.device)
 
-    def train(self, train_loader, val_loader, n_epochs=10, lr=0.001, verbose_freq=1):
+    def train(self, train_loader, val_loader, save_dir, n_epochs=10, lr=0.001, verbose_freq=1):
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
-        start_time = time.time()
         
+        start_time = time.time()
+        self.metrics = {'freq': verbose_freq, 'train_loss': [], 'train_acc': [], 
+                        'val_loss': [], 'val_acc': [], 'best_val_acc': 0}
+        self.save_dir = save_dir
+
         self.model.train()
         for epoch in range(1, n_epochs+1):
             running_loss = 0.0
-            for images, labels in train_loader:
+            for images, labels in tqdm(train_loader):
                 images, labels = images.to(self.device), labels.to(self.device)
 
                 optimizer.zero_grad()
@@ -47,11 +52,25 @@ class Teacher():
     def print_train_metrics(self, train_loader, val_loader, epoch, n_epochs, start_time, running_loss):
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch {epoch}/{n_epochs}, Loss: {epoch_loss:.2f}")
-        self.test('Train', train_loader)
-        self.test('Validation', val_loader)
+
+        train_acc = self.get_accuracy(train_loader)
+        val_acc = self.get_accuracy(val_loader)
+
+        print(f"Training accuracy: {100 * train_acc:.2f}%")
+        print(f"Validation accuracy: {100 * val_acc:.2f}%")
+
+        self.metrics['train_loss'].append(epoch_loss)
+        self.metrics['val_loss'].append(epoch_loss)
+        self.metrics['train_acc'].append(train_acc)
+        self.metrics['val_acc'].append(val_acc)
+
+        if val_acc > self.metrics['best_val_acc']:
+            self.metrics['best_val_acc'] = val_acc
+            self.save_model(self.save_dir + f"/teacher_{self.teacher_type}_{str(epoch).zfill(3)}.pt")
+
         print(f"Time elapsed: {round(time.time() - start_time)} seconds\n")
 
-    def test(self, test_name, test_loader):
+    def get_accuracy(self, test_loader):
         correct = 0
         total = 0
         with torch.no_grad():
@@ -62,7 +81,8 @@ class Teacher():
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        print(f"{test_name} set accuracy: {100 * correct / total:.2f}%")
+        accuracy = correct / total
+        return accuracy
 
     def get_logits(self, data_loader):
         self.model.eval()

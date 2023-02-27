@@ -1,5 +1,5 @@
 english_alphanumeric = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-skip_chars = set(' θπ') | english_alphanumeric
+skip_chars = set(' θ﻿π©‌­‍') | english_alphanumeric
 
 def merge_csv_files(csv_files):
     # merge by concatenating lines
@@ -39,7 +39,28 @@ def normalize_word(word):
         if 'ড়' in word: word = word.replace('ড়', 'ড়')
         if 'ঢ়' in word: word = word.replace('ঢ়', 'ঢ়')
         if '়' in word: word = word.replace('়', '') # discard any other '়' without 'ব'/'য'/'ড'/'ঢ'
-        
+    
+    if '–' in word:
+        word = word.replace('–', '-')
+
+    if '—' in word:
+        word = word.replace('—', '-')
+
+    if '‘' in word:
+        word = word.replace('‘', "'")
+
+    if '’' in word:
+        word = word.replace('’', "'")
+
+    if '“' in word:
+        word = word.replace('“', '"')
+
+    if '”' in word:
+        word = word.replace('”', '"')
+
+    if '•' in word:
+        word = word.replace('•', '·')
+
     # visually similar '৷' (Bengali Currency Numerator Four) is replaced by '।' (Devanagari Danda)
     if '৷' in word: word = word.replace('৷', '।')
     

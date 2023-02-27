@@ -1,11 +1,14 @@
 from DataManager.SyntheticCharacterLoader import SyntheticCharacterLoader
 from Models.Teacher.Teacher import Teacher
+import json
 
-teacher = Teacher('BasicConv', 178)
+with open('Graphemes/Extracted/graphemes_bw_bnhtrd_syn.json', 'r') as f:
+    graphemes_dict = json.load(f)
 
-train_loader = SyntheticCharacterLoader('../Datasets/SyntheticCharacters/train')
-val_loader = SyntheticCharacterLoader('../Datasets/SyntheticCharacters/val', batch_size=1024)
+n_classes = len(graphemes_dict)+1
+teacher = Teacher('BasicConv', n_classes=n_classes)
 
-teacher.train(train_loader, val_loader, n_epochs=100, lr=0.001, verbose_freq=5)
-logits = teacher.get_logits(val_loader)
-print(logits.shape)
+train_loader = SyntheticCharacterLoader('Datasets/SyntheticCharacters/train')
+val_loader = SyntheticCharacterLoader('Datasets/SyntheticCharacters/val', batch_size=1024)
+
+teacher.train(train_loader, val_loader, 'Datasets', n_epochs=100, lr=0.001, verbose_freq=5)
