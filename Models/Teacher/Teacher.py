@@ -5,6 +5,7 @@ import torch.optim as optim
 import time
 import numpy as np
 from tqdm import tqdm
+from Metrics.metrics import print_metric
 class Teacher():
 
     def __init__(self, teacher_type, n_classes):
@@ -51,15 +52,15 @@ class Teacher():
         print("Training finished.")
 
     def print_metrics(self, train_loader, val_loader, epoch, start_time, running_loss):
-        epoch_loss = running_loss / len(train_loader)
         print("_"*75)
-        print(f"Training Loss: {epoch_loss:.2f}")
 
+        epoch_loss = running_loss / len(train_loader)
         train_acc = self.get_accuracy(train_loader)
         val_acc = self.get_accuracy(val_loader)
 
-        print(f"Training accuracy: {100 * train_acc:.2f}%")
-        print(f"Validation accuracy: {100 * val_acc:.2f}%")
+        print_metric('Training Loss', 100 * epoch_loss, 2)
+        print_metric('Training accuracy', 100 * train_acc, 2)
+        print_metric('Validation accuracy', 100 * val_acc, 2)
 
         self.metrics['train_loss'].append(epoch_loss)
         self.metrics['val_loss'].append(epoch_loss)
