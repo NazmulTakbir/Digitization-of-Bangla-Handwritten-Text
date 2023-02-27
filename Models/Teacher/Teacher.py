@@ -33,6 +33,7 @@ class Teacher():
         self.model.train()
         for epoch in range(1, n_epochs+1):
             running_loss = 0.0
+            print(f"Epoch {epoch}/{n_epochs}:")
             for images, labels in tqdm(train_loader):
                 images, labels = images.to(self.device), labels.to(self.device)
 
@@ -51,7 +52,7 @@ class Teacher():
 
     def print_train_metrics(self, train_loader, val_loader, epoch, n_epochs, start_time, running_loss):
         epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch {epoch}/{n_epochs}, Loss: {epoch_loss:.2f}")
+        print(f"Training Loss: {epoch_loss:.2f}")
 
         train_acc = self.get_accuracy(train_loader)
         val_acc = self.get_accuracy(val_loader)
