@@ -46,12 +46,13 @@ class Teacher():
                 running_loss += loss.item()
             
             if epoch % verbose_freq == 0:
-                self.print_train_metrics(train_loader, val_loader, epoch, n_epochs, start_time, running_loss)
+                self.print_metrics(train_loader, val_loader, epoch, start_time, running_loss)
 
         print("Training finished.")
 
-    def print_train_metrics(self, train_loader, val_loader, epoch, n_epochs, start_time, running_loss):
+    def print_metrics(self, train_loader, val_loader, epoch, start_time, running_loss):
         epoch_loss = running_loss / len(train_loader)
+        print("_"*75)
         print(f"Training Loss: {epoch_loss:.2f}")
 
         train_acc = self.get_accuracy(train_loader)
@@ -69,7 +70,8 @@ class Teacher():
             self.metrics['best_val_acc'] = val_acc
             self.save_model(self.save_dir + f"/teacher_{self.teacher_type}_{str(epoch).zfill(3)}.pt")
 
-        print(f"Time elapsed: {round(time.time() - start_time)} seconds\n")
+        print(f"Time elapsed: {round(time.time() - start_time)} seconds")
+        print("_"*75)
 
     def get_accuracy(self, test_loader):
         correct = 0
