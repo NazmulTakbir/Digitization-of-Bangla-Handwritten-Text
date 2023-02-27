@@ -15,9 +15,9 @@ class Student:
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         if teacher is None:
-            self.student_type = extractor_type + '_hasteacher'
-        else:
             self.student_type = extractor_type + '_noteacher'
+        else:
+            self.student_type = extractor_type + '_noteacherhasteacher'
         self.graphemes_dict = graphemes_dict
         self.inv_graphemes_dict = {v: k for k, v in graphemes_dict.items()}
         self.n_classes = len(graphemes_dict)+1
@@ -126,22 +126,22 @@ class Student:
 
         if data_set == 'Validation' and wrr > self.best_wrr:
             self.best_wrr = wrr
-            self.best_epoch = self.epoch
             self.save_best_model()
 
     def save_best_model(self):
         prev = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
         if os.path.exists(prev):
             os.remove(prev)
+        self.best_epoch = self.epoch
         self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
 
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
-        print("Actual :: Predicted")
+        print("Actual :: Predicted", end="  |||  ")
         for i in sample:
             print(f"{self.decoded_labels[i]} :: {self.decoded_preds[i]}", end="  |||  ")
-        print("")
+        print("\n")
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
