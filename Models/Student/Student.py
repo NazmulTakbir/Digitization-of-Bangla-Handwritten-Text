@@ -3,6 +3,7 @@ import torch.optim as optim
 from tqdm import tqdm
 from torch import nn
 import numpy as np
+import os
 
 from Graphemes.extract_graphemes import decode_prediction, decode_label, words_to_labels
 from .CRNN import CRNN
@@ -13,6 +14,10 @@ class Student:
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+        if teacher is None:
+            self.student_type = extractor_type + '_hasteacher'
+        else:
+            self.student_type = extractor_type + '_noteacher'
         self.graphemes_dict = graphemes_dict
         self.inv_graphemes_dict = {v: k for k, v in graphemes_dict.items()}
         self.n_classes = len(graphemes_dict)+1
@@ -21,11 +26,14 @@ class Student:
         self.teacher = teacher
         self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True).to(self.device)
 
-    def init_training(self, lr):
+    def init_training(self, lr, save_dir):
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr, weight_decay=1e-05)
         self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=15, T_mult=1, eta_min=0.0001)
-    
-    def init_epoch(self, train=True):
+        self.best_wrr = 0
+        self.best_epoch = 0
+        self.save_dir = save_dir
+
+    def init_epoch(self, epoch, train=True):
         if train:
             self.model.train()
         else:
@@ -37,6 +45,7 @@ class Student:
         self.batch_loss = 0
         self.alpha = 0.5
         self.t = 2
+        self.epoch = epoch
 
     def add_teacher_loss(self, loss, logits, labels):
         probs = torch.nn.functional.log_softmax(logits/self.t , dim=2)
@@ -64,12 +73,12 @@ class Student:
         
         return probs
 
-    def train(self, train_loader, val_loader, epochs=30, lr = 0.0003):
-        self.init_training(lr)
+    def train(self, train_loader, val_loader, save_dir, epochs=30, lr = 0.0003):
+        self.init_training(lr, save_dir)
 
-        for epoch in range(epochs):
-            self.init_epoch()
-            print("Training Epoch: ", str(epoch+1)+"/"+str(epochs))
+        for epoch in range(1, epochs+1):
+            self.init_epoch(epoch)
+            print("Training Epoch: ", str(epoch)+"/"+str(epochs))
             for images, words in tqdm(train_loader):
                 probs, labels, loss = self.forward(images, words)
                               
@@ -110,17 +119,29 @@ class Student:
 
     def print_stats(self, data_set):
         print_metric(f"{data_set} loss", self.batch_loss/self.batch_size)
-        recognition_metrics(self.decoded_preds, self.decoded_labels, final_action='print')
+        wrr = recognition_metrics(self.decoded_preds, self.decoded_labels, final_action='both')['wrr']
         accuracy_metrics(self.y_true, self.y_pred, self.n_classes, final_action='print',
                          target_names=[v for _, v in self.inv_graphemes_dict.items()])
         self.print_samples()
 
+        if data_set == 'Validation' and wrr > self.best_wrr:
+            self.best_wrr = wrr
+            self.best_epoch = self.epoch
+            self.save_best_model()
+
+    def save_best_model(self):
+        prev = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
+        if os.path.exists(prev):
+            os.remove(prev)
+        self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
+
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
-        print("Predicted | Actual:")
+        print("Predicted :: Actual:")
         for i in sample:
-            print(f"{self.decoded_preds[i]} | {self.decoded_labels[i]}", end=" -- ")
+            print(f"{self.decoded_preds[i]} :: {self.decoded_labels[i]}", end="  |||  ")
+        print("")
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))

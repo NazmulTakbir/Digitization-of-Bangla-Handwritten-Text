@@ -71,13 +71,11 @@ def recognition_metrics(predictions, labels, final_action='print', res_file_path
         'crr': 1 - total_edit_dist / total_length
     }
     
-    if final_action.lower().strip() == 'print':
+    if final_action.lower().strip() == 'print' or final_action.lower().strip() == 'both':
         print_metric('Absolute Word Match Count', results['abs_match'], 0)
         print_metric('Word Recognition Rate (WRR)', results['wrr'])
         print_metric('Normal Edit Distance (NED)', int(results['total_ned']), 0)
         print_metric('Character Recognition Rate (CRR)', results['crr'])
 
-    elif final_action.lower().strip() == 'return':
+    if final_action.lower().strip() == 'return' or final_action.lower().strip() == 'both':
         return results
-    else:
-        raise ValueError("final_action must be either 'print' or 'return'")
