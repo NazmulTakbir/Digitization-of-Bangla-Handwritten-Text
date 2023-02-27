@@ -138,9 +138,9 @@ class Student:
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
-        print("Predicted :: Actual:")
+        print("Actual :: Predicted")
         for i in sample:
-            print(f"{self.decoded_preds[i]} :: {self.decoded_labels[i]}", end="  |||  ")
+            print(f"{self.decoded_labels[i]} :: {self.decoded_preds[i]}", end="  |||  ")
         print("")
 
     def load_model(self, path):
