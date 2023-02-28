@@ -136,15 +136,18 @@ class Student:
         if data_set == 'Validation' and wrr > self.best_wrr:
             self.best_wrr = wrr
             self.save_best_model()
-            self.save_samples()
 
     def save_best_model(self):
-        prev = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
-        if os.path.exists(prev):
-            os.remove(prev)
+        prev_model = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
+        if os.path.exists(prev_model):
+            os.remove(prev_model)
+        prev_samples = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
+        if os.path.exists(prev_samples):
+            os.remove(prev_samples)
         self.best_epoch = self.epoch
         self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
-        
+        self.save_samples()
+
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
