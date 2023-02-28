@@ -25,4 +25,4 @@ val_loader, val_size = get_word_loader(val_imgs, val_labels, augment=False)
 
 save_path = '/content/drive/MyDrive/ML-Project-Files/SavedModels'
 
-student.train(train_loader, val_loader, save_path)
+student.train(train_loader, val_loader, save_path, epochs=50)
