@@ -141,9 +141,21 @@ class Teacher():
             probs = torch.zeros((31, self.n_classes))
             probs_no = 0
             for grapheme_no, grapheme_id in enumerate(label, 1):
-                for _ in range(31//len(label)):
-                    probs[probs_no, :] = self.prediction_dict[str(grapheme_id).zfill(3)]
+                for rep_no in range((31-len(label))//len(label)):
+                    prob = self.prediction_dict[str(grapheme_id).zfill(3)]
+                    prob[0, grapheme_id] = prob[0, grapheme_id] * 0.99 ** (rep_no+1)
+                    if len(label) != grapheme_no:
+                        next_grapheme_id = label[grapheme_no]
+                        prob[0, next_grapheme_id] = prob[0, next_grapheme_id] / (0.99 ** (rep_no+1))
+                    prob = prob / prob.sum()
+                    probs[probs_no, :] = prob
                     probs_no += 1
+
+                separator = torch.zeros((1, self.n_classes))
+                separator[0, 0] = 0.5
+                separator[0, 1:] = 0.5 / (self.n_classes-1)
+                probs[probs_no] = separator
+                probs_no += 1
 
                 if len(label) == grapheme_no:
                     while probs_no <= 30:
@@ -154,7 +166,7 @@ class Teacher():
         
         batch_probs = batch_probs.transpose(0,1)
         return batch_probs
-
+    
     def save_model(self, path):
         torch.save(self.model.state_dict(), path)
 

@@ -65,9 +65,9 @@ class Student:
         # support size.'batchmean' divides only by the batch size, and aligns with the KL div 
         # math definition.'mean' will be changed to behave the same as 'batchmean' in the next 
         # major release. 
-        warnings.filterwarnings('ignore', category=WarningClass)
+        warnings.filterwarnings('ignore', category=UserWarning)
         ty = nn.KLDivLoss(reduction='mean')(probs , teacher_probs)
-        warnings.filterwarnings('default', category=WarningClass)
+        warnings.filterwarnings('default', category=UserWarning)
         
         loss = ty * (self.t*self.t * 2.0 + self.alpha) + loss * (1.-self.alpha)
         return loss
