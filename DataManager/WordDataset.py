@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from torch.utils import data
 from Graphemes.utils import skip_chars
-
+from ImageProcessing.image_processing import adjust_contrast_grey
 class WordDataset(data.Dataset):
     def __init__(self, img_dir, label_file_path, inp_h=32, inp_w=128, transform=None):
         """
@@ -41,13 +41,13 @@ class WordDataset(data.Dataset):
     def __getitem__(self, idx):
         image = cv2.imread(self.data[idx][0])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        image = adjust_contrast_grey(image)
         img_h, img_w = image.shape
         image = cv2.resize(image, (0,0), fx=self.inp_w/img_w, fy=self.inp_h/img_h, interpolation=cv2.INTER_CUBIC)
         image = np.reshape(image, (self.inp_h, self.inp_w, 1))
 
         if self.transform is not None:
             image = self.transform(image = image)["image"]
-            return image, self.data[idx][1]
         else:
             image = image.transpose(2, 0, 1)
             
