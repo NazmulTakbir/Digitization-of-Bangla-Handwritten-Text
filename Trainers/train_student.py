@@ -6,7 +6,13 @@ from DataManager.WordLoader import get_word_loader
 with open('Graphemes/Extracted/graphemes_bw_bnhtrd_syn.json', 'r') as f:
     graphemes_dict = json.load(f)
 
-student  = Student(graphemes_dict)
+teacher_data = {
+    'teacher_type': 'BasicConv',
+    'saved_path': '/content/drive/MyDrive/ML-Project-Files/SavedModels/teacher_BasicConv_030.pt',
+    'img_dir': '/content/ML_Project/Datasets/SyntheticCharacters/train'
+}
+
+student  = Student(graphemes_dict, teacher_data=teacher_data)
 
 train_imgs = ['Datasets/Bn-HTRd/train', 'Datasets/Bn-HTRd/val']
 train_labels = ['Datasets/Bn-HTRd/train/labels.csv', 'Datasets/Bn-HTRd/val/labels.csv']

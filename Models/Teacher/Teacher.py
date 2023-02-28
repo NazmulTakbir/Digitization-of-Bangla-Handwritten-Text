@@ -7,11 +7,17 @@ import numpy as np
 from tqdm import tqdm
 import os
 from Metrics.metrics import print_metric
+from DataManager.SyntheticCharacterDataset import SyntheticCharacterDataset
+import torch.nn.functional as F
+import random
+from tqdm import tqdm
+
 class Teacher():
 
     def __init__(self, teacher_type, n_classes):
         self.teacher_type = teacher_type
         self.n_classes = n_classes
+        self.prediction_dict = None
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         if teacher_type == 'BasicConv':
@@ -40,8 +46,8 @@ class Teacher():
                 images, labels = images.to(self.device), labels.to(self.device)
 
                 optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = criterion(outputs, labels)
+                logits = self.model(images)
+                loss = criterion(logits, labels)
                 loss.backward()
                 optimizer.step()
 
@@ -91,21 +97,65 @@ class Teacher():
         accuracy = correct / total
         return accuracy
 
-    def get_logits(self, data_loader):
+    def predict_img(self, img_path, t=1, target=-1):
         self.model.eval()
-        logits = []
+        img = SyntheticCharacterDataset.load_character_image(img_path)
+        img = img.reshape(1, img.shape[0], img.shape[1], img.shape[2]) / 255.0
+        img = torch.from_numpy(img).float().to(self.device)
+        
         with torch.no_grad():
-            for images, labels in data_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
-                outputs = self.model(images)
-                logits.append(outputs.cpu().numpy())
-        return np.concatenate(logits)
+            logits = self.model(img)
+        probs = F.softmax(logits/t, dim=1) if target != 0 else F.log_softmax(logits/t, dim=1)
+        pred = probs.data.cpu().argmax().item()
+
+        return pred, probs
+
+    def generate_prediction_dict(self, saved_path, img_dir):
+        self.load_model(saved_path)
+        self.prediction_dict = {}
+        all_imgs = os.listdir(img_dir)
+        
+        for class_no in range(1, self.n_classes):
+            class_str = str(class_no).zfill(3)
+            class_imgs = [img for img in all_imgs if img.startswith(class_str)]
+
+            while True:
+                rand_img = class_imgs[random.randint(0, len(class_imgs)-1)]
+                img_path = os.path.join(img_dir, rand_img)
+                pred, probs = self.predict_img(img_path)
+
+                if pred == class_no:
+                    break
+
+            self.prediction_dict[class_str]= probs
+
+    def get_stacked_probs(self, labels):
+        assert self.prediction_dict is not None, "Teacher's Prediction dictionary is not initialized"
+        
+        batch_probs = torch.zeros((len(labels), 31, self.n_classes))
+        for label_no, label in enumerate(labels):
+            label = list(filter(lambda grapheme_id: grapheme_id != 0, label))
+            label = [grapheme_id.item() for grapheme_id in label]
+            
+            probs = torch.zeros((31, self.n_classes))
+            probs_no = 0
+            for grapheme_no, grapheme_id in enumerate(label, 1):
+                for _ in range(31//len(label)):
+                    probs[probs_no, :] = self.prediction_dict[str(grapheme_id).zfill(3)]
+                    probs_no += 1
+
+                if len(label) == grapheme_no:
+                    while probs_no <= 30:
+                        probs[probs_no, :] = self.prediction_dict[str(grapheme_id).zfill(3)]
+                        probs_no += 1
+
+            batch_probs[label_no, :, :] = probs
+        
+        batch_probs = batch_probs.transpose(0,1)
+        return batch_probs
 
     def save_model(self, path):
         torch.save(self.model.state_dict(), path)
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
-
-    def stack_predictions(self, batch):
-        self.model.eval()

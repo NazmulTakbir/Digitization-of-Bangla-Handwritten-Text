@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from torch.utils import data
 from Graphemes.utils import skip_chars
+
 class WordDataset(data.Dataset):
     def __init__(self, img_dir, label_file_path, inp_h=32, inp_w=128, transform=None):
         """

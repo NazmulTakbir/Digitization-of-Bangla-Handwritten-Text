@@ -13,7 +13,6 @@ data_transform = A.Compose([
         A.GaussNoise(var_limit=(120.0, 135.0), mean=0, always_apply=False, p=0.25),
         ToTensorV2(),
     ])
-
 class SyntheticCharacterLoader(DataLoader):
     def __init__(self, data_dir, batch_size=256, num_workers=1, shuffle=True):
         self.dataset = SyntheticCharacterDataset(data_dir, transform=data_transform)
