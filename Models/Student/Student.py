@@ -100,7 +100,7 @@ class Student:
             self.scheduler.step()
             self.print_stats('Train')
             self.validate(epoch, val_loader)
-            print("="*100)
+            print("="*125)
     
     def validate(self, epoch, val_loader):
         self.init_epoch(epoch, train=False)
@@ -136,6 +136,7 @@ class Student:
         if data_set == 'Validation' and wrr > self.best_wrr:
             self.best_wrr = wrr
             self.save_best_model()
+            self.save_samples()
 
     def save_best_model(self):
         prev = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
@@ -143,7 +144,7 @@ class Student:
             os.remove(prev)
         self.best_epoch = self.epoch
         self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
-
+        
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
@@ -151,6 +152,12 @@ class Student:
         for i in sample:
             print(f"{self.decoded_labels[i]} :: {self.decoded_preds[i]}", end="  |||  ")
         print("\n")
+
+    def save_samples(self):
+        res_path = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
+        with open(res_path, 'w') as f:
+            for i in range(len(self.decoded_preds)):
+                f.write(f"{self.decoded_labels[i]}::{self.decoded_preds[i]}\n")
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
