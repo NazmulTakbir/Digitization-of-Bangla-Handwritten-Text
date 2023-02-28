@@ -1,5 +1,6 @@
 import torch
 from .BasicConv import BasicConv
+from .ResNet18 import ResNet18
 import torch.nn as nn
 import torch.optim as optim
 import time
@@ -17,7 +18,7 @@ class Teacher():
         if teacher_type == 'BasicConv':
             self.model =  BasicConv(n_classes)
         elif teacher_type == 'ResNet18':
-            pass
+            self.model = ResNet18(n_classes)
         else:
             raise ValueError('Teacher type not supported')
 

@@ -6,9 +6,9 @@ with open('Graphemes/Extracted/graphemes_bw_bnhtrd_syn.json', 'r') as f:
     graphemes_dict = json.load(f)
 
 n_classes = len(graphemes_dict)+1
-teacher = Teacher('BasicConv', n_classes=n_classes)
+teacher = Teacher('ResNet18', n_classes=n_classes)
 
-train_loader = SyntheticCharacterLoader('Datasets/SyntheticCharacters/train')
+train_loader = SyntheticCharacterLoader('Datasets/SyntheticCharacters/train',  batch_size=1024)
 val_loader = SyntheticCharacterLoader('Datasets/SyntheticCharacters/val', batch_size=1024)
 
 save_path = '/content/drive/MyDrive/ML-Project-Files/SavedModels'
