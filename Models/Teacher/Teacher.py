@@ -1,5 +1,6 @@
 import torch
 from .BasicConv import BasicConv
+from .ResNet18 import ResNet18
 import torch.nn as nn
 import torch.optim as optim
 import time
@@ -23,7 +24,7 @@ class Teacher():
         if teacher_type == 'BasicConv':
             self.model =  BasicConv(n_classes)
         elif teacher_type == 'ResNet18':
-            pass
+            self.model = ResNet18(n_classes)
         else:
             raise ValueError('Teacher type not supported')
 
@@ -110,7 +111,7 @@ class Teacher():
 
         return pred, probs
 
-    def generate_prediction_dict(self, saved_path, img_dir):
+    def generate_prediction_dict(self, saved_path, img_dir, t):
         self.load_model(saved_path)
         self.prediction_dict = {}
         all_imgs = os.listdir(img_dir)
@@ -122,7 +123,7 @@ class Teacher():
             while True:
                 rand_img = class_imgs[random.randint(0, len(class_imgs)-1)]
                 img_path = os.path.join(img_dir, rand_img)
-                pred, probs = self.predict_img(img_path)
+                pred, probs = self.predict_img(img_path, t=t)
 
                 if pred == class_no:
                     break

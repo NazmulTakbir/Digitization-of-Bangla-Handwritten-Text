@@ -7,8 +7,8 @@ with open('Graphemes/Extracted/graphemes_bw_bnhtrd_syn.json', 'r') as f:
     graphemes_dict = json.load(f)
 
 teacher_data = {
-    'teacher_type': 'BasicConv',
-    'saved_path': '/content/drive/MyDrive/ML-Project-Files/SavedModels/teacher_BasicConv_030.pt',
+    'teacher_type': 'ResNet18',
+    'saved_path': '/content/drive/MyDrive/ML-Project-Files/SavedModels/teacher_ResNet18_085.pt',
     'img_dir': '/content/ML_Project/Datasets/SyntheticCharacters/train'
 }
 

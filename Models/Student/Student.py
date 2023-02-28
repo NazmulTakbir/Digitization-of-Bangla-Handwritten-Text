@@ -24,8 +24,7 @@ class Student:
         if teacher_data is None:
             self.student_type = extractor_type + '_noteacher'
         else:
-            self.student_type = extractor_type + '_hasteacher'
-            self.init_teacher()
+            self.student_type = extractor_type + f"_hasteacher_{teacher_data['teacher_type']}"
         
         self.model = CRNN(extractor_type, self.n_classes)
         self.model.to(self.device)
@@ -33,7 +32,7 @@ class Student:
 
     def init_teacher(self):
         self.teacher = Teacher(self.teacher_data['teacher_type'], n_classes=self.n_classes)
-        self.teacher.generate_prediction_dict(self.teacher_data['saved_path'], self.teacher_data['img_dir'])
+        self.teacher.generate_prediction_dict(self.teacher_data['saved_path'], self.teacher_data['img_dir'], t=self.t)
 
     def init_training(self, lr, save_dir):
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr, weight_decay=1e-05)
@@ -41,6 +40,9 @@ class Student:
         self.best_wrr = 0
         self.best_epoch = 0
         self.save_dir = save_dir
+        self.alpha = 0.5
+        self.t = 2
+        self.init_teacher()
 
     def init_epoch(self, epoch, train=True):
         if train:
@@ -52,8 +54,6 @@ class Student:
         self.decoded_preds = []
         self.decoded_labels = []
         self.batch_loss = 0
-        self.alpha = 0.5
-        self.t = 2
         self.epoch = epoch
 
     def add_teacher_loss(self, loss, logits, labels):
