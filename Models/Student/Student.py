@@ -111,14 +111,14 @@ class Student:
             self.validate(epoch, val_loader)
             print("="*125)
     
-    def validate(self, epoch, val_loader):
+    def validate(self, epoch, val_loader, save_best=True):
         self.init_epoch(epoch, train=False)
         with torch.no_grad():
             print("Validating:")
             for images, words in tqdm(val_loader):
                 probs, labels, loss = self.forward(images, words)
                 self.save_mini_batch_results(probs, labels)
-            self.print_stats('Validation')
+            self.print_stats('Validation', save_best=save_best)
 
     def save_mini_batch_results(self, probs, labels):
         _, preds = probs.max(2)
@@ -135,14 +135,14 @@ class Student:
             self.y_true.extend(grapheme_id_list[:min_len])
             self.y_pred.extend(list(label)[:min_len])
 
-    def print_stats(self, data_set):
+    def print_stats(self, data_set, save_best):
         print_metric(f"{data_set} loss", self.batch_loss/self.batch_size)
         wrr = recognition_metrics(self.decoded_preds, self.decoded_labels, final_action='both')['wrr']
         accuracy_metrics(self.y_true, self.y_pred, self.n_classes, final_action='print',
                          target_names=[v for _, v in self.inv_graphemes_dict.items()])
         self.print_samples()
 
-        if data_set == 'Validation' and wrr > self.best_wrr:
+        if save_best and data_set == 'Validation' and wrr > self.best_wrr:
             self.best_wrr = wrr
             self.save_best_model()
 
