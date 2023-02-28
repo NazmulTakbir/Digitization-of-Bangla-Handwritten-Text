@@ -4,6 +4,7 @@ from tqdm import tqdm
 from torch import nn
 import numpy as np
 import os
+import warnings
 
 from Graphemes.extract_graphemes import decode_prediction, decode_label, words_to_labels
 from .CRNN import CRNN
@@ -59,7 +60,15 @@ class Student:
     def add_teacher_loss(self, loss, logits, labels):
         probs = torch.nn.functional.log_softmax(logits/self.t , dim=2)
         teacher_probs = self.teacher.get_stacked_probs(labels).cuda()
-        ty = nn.KLDivLoss(reduction='batchmean')(probs , teacher_probs)
+
+        # UserWarning: reduction: 'mean' divides the total loss by both the batch size and the 
+        # support size.'batchmean' divides only by the batch size, and aligns with the KL div 
+        # math definition.'mean' will be changed to behave the same as 'batchmean' in the next 
+        # major release. 
+        warnings.filterwarnings('ignore', category=WarningClass)
+        ty = nn.KLDivLoss(reduction='mean')(probs , teacher_probs)
+        warnings.filterwarnings('default', category=WarningClass)
+        
         loss = ty * (self.t*self.t * 2.0 + self.alpha) + loss * (1.-self.alpha)
         return loss
     
