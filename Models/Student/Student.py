@@ -8,23 +8,32 @@ import os
 from Graphemes.extract_graphemes import decode_prediction, decode_label, words_to_labels
 from .CRNN import CRNN
 from Metrics.metrics import recognition_metrics, accuracy_metrics, print_metric
+from Models.Teacher.Teacher import Teacher
+
 class Student:
 
-    def __init__(self, graphemes_dict, extractor_type='VGG', teacher=None):
+    def __init__(self, graphemes_dict, extractor_type='VGG', teacher_data=None):
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-        if teacher is None:
-            self.student_type = extractor_type + '_noteacher'
-        else:
-            self.student_type = extractor_type + '_noteacherhasteacher'
         self.graphemes_dict = graphemes_dict
         self.inv_graphemes_dict = {v: k for k, v in graphemes_dict.items()}
         self.n_classes = len(graphemes_dict)+1
+
+        self.teacher_data = teacher_data
+        if teacher_data is None:
+            self.student_type = extractor_type + '_noteacher'
+        else:
+            self.student_type = extractor_type + '_hasteacher'
+            self.init_teacher()
+        
         self.model = CRNN(extractor_type, self.n_classes)
         self.model.to(self.device)
-        self.teacher = teacher
         self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True).to(self.device)
+
+    def init_teacher(self):
+        self.teacher = Teacher(self.teacher_data['teacher_type'], n_classes=self.n_classes)
+        self.teacher.generate_prediction_dict(self.teacher_data['saved_path'], self.teacher_data['img_dir'])
 
     def init_training(self, lr, save_dir):
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr, weight_decay=1e-05)
@@ -50,7 +59,7 @@ class Student:
     def add_teacher_loss(self, loss, logits, labels):
         probs = torch.nn.functional.log_softmax(logits/self.t , dim=2)
         teacher_probs = self.teacher.get_stacked_probs(labels).cuda()
-        ty = nn.KLDivLoss()(probs , teacher_probs)
+        ty = nn.KLDivLoss(reduction='batchmean')(probs , teacher_probs)
         loss = ty * (self.t*self.t * 2.0 + self.alpha) + loss * (1.-self.alpha)
         return loss
     
@@ -65,7 +74,7 @@ class Student:
             probs_size = torch.tensor([probs.size(0)] * self.batch_size, dtype=torch.long).to(self.device)
 
             loss = self.ctc_loss(probs, labels, probs_size, label_lengths)
-            if self.teacher is not None:
+            if self.teacher_data is not None:
                 loss = self.add_teacher_loss(loss, logits, labels)
             self.batch_loss += loss.item()  
 
@@ -91,7 +100,7 @@ class Student:
             self.scheduler.step()
             self.print_stats('Train')
             self.validate(epoch, val_loader)
-            print("_"*75)
+            print("="*125)
     
     def validate(self, epoch, val_loader):
         self.init_epoch(epoch, train=False)
@@ -129,11 +138,15 @@ class Student:
             self.save_best_model()
 
     def save_best_model(self):
-        prev = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
-        if os.path.exists(prev):
-            os.remove(prev)
+        prev_model = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
+        if os.path.exists(prev_model):
+            os.remove(prev_model)
+        prev_samples = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
+        if os.path.exists(prev_samples):
+            os.remove(prev_samples)
         self.best_epoch = self.epoch
         self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
+        self.save_samples()
 
     def print_samples(self, sample_size=5):
         total = len(self.decoded_preds)
@@ -142,6 +155,12 @@ class Student:
         for i in sample:
             print(f"{self.decoded_labels[i]} :: {self.decoded_preds[i]}", end="  |||  ")
         print("\n")
+
+    def save_samples(self):
+        res_path = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
+        with open(res_path, 'w') as f:
+            for i in range(len(self.decoded_preds)):
+                f.write(f"{self.decoded_labels[i]}::{self.decoded_preds[i]}\n")
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
