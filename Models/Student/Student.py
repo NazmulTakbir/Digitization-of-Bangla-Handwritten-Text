@@ -107,7 +107,7 @@ class Student:
                 self.save_mini_batch_results(probs, labels)
         
             self.scheduler.step()
-            self.print_stats('Train')
+            self.print_stats('Train', save_best=False)
             self.validate(epoch, val_loader)
             print("="*125)
     
@@ -142,7 +142,7 @@ class Student:
                          target_names=[v for _, v in self.inv_graphemes_dict.items()])
         self.print_samples()
 
-        if save_best and data_set == 'Validation' and wrr > self.best_wrr:
+        if save_best and wrr > self.best_wrr:
             self.best_wrr = wrr
             self.save_best_model()
 
