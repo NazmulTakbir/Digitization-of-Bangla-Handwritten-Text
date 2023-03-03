@@ -20,7 +20,7 @@ train_labels = ['Datasets/Bn-HTRd/train/labels.csv', 'Datasets/Bn-HTRd/val/label
 val_imgs = ['Datasets/BanglaWriting/train', 'Datasets/BanglaWriting/val']
 val_labels = ['Datasets/BanglaWriting/train/labels.csv', 'Datasets/BanglaWriting/val/labels.csv']
 
-train_loader, train_size = get_word_loader(train_imgs, train_labels, augment=True)
+train_loader, train_size = get_word_loader(train_imgs, train_labels, augment=True, use_synthetic=True)
 val_loader, val_size = get_word_loader(val_imgs, val_labels, augment=False)
 
 save_path = '/content/drive/MyDrive/ML-Project-Files/SavedModels'

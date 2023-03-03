@@ -1,10 +1,10 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 import shutil 
-import numpy as np
 import random
 import json
 from tqdm import tqdm
+from Synthesizers.utils import crop
 
 dst = 'Datasets/SyntheticCharacters/all'
 if os.path.exists(dst):
@@ -17,26 +17,6 @@ graphemes_dict = json.load(open(graphemes_dict, 'r', encoding='utf-8'))
 fonts_root = 'Synthesizers/fonts'
 font_files = os.listdir(fonts_root)
 font_files.sort()
-
-def crop(img, b_color):
-    """Crops around the character. Space around the character is random."""
-    img = np.array(img)
-
-    first_row = np.where(img.sum(axis=1) < b_color * img.shape[1])[0][0]
-    last_row = np.where(img.sum(axis=1) < b_color * img.shape[1])[0][-1]
-    first_col = np.where(img.sum(axis=0) < b_color * img.shape[0])[0][0]
-    last_col = np.where(img.sum(axis=0) < b_color * img.shape[0])[0][-1]
-
-    first_row = max(0, first_row-random.randint(0, 20))
-    first_col = max(0, first_col-random.randint(0, 20))
-    last_row = min(img.shape[0], last_row+random.randint(0, 20))
-    last_col = min(img.shape[1], last_col+random.randint(0, 20))
-
-    img = img[first_row:last_row, first_col:last_col]
-    img = Image.fromarray(img)
-    img = img.resize((32, 32))
-
-    return img
 
 # some fonts have problems with some graphemes. for example font 14 has problems with 
 # grapheme 4,9,10,14,17,20,21,23,25. so we skip them

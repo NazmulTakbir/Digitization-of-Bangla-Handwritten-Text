@@ -1,11 +1,11 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import ConcatDataset, DataLoader
-
+from .SyntheticWordDataset import SyntheticWordDataset
 from .WordDataset import WordDataset
 
 data_transform_aug = A.Compose([ 
-        A.Rotate(limit=30, p=0.5),
+        A.Rotate(limit=10, p=0.5),
         A.Blur(blur_limit=3, p=0.25),
         A.OpticalDistortion(p=0.25),
         A.GridDistortion(p=0.25),
@@ -18,7 +18,7 @@ data_transform_no_aug = A.Compose([
         ToTensorV2(),
     ])
 
-def get_word_loader(img_dirs, label_file_paths, augment=True, batch_size=256, num_workers=1, shuffle=True):
+def get_word_loader(img_dirs, label_file_paths, augment=True, batch_size=256, num_workers=1, shuffle=True, use_synthetic=False):
     if isinstance(img_dirs, str):
         img_dirs = [img_dirs]
     if isinstance(label_file_paths, str):
@@ -32,6 +32,13 @@ def get_word_loader(img_dirs, label_file_paths, augment=True, batch_size=256, nu
             datasets.append(WordDataset(img_dir, label_file_path, transform=data_transform_aug))
         else:
             datasets.append(WordDataset(img_dir, label_file_path, transform=data_transform_no_aug))
+
+    if use_synthetic:
+        if augment:
+            datasets.append(SyntheticWordDataset(transform=data_transform_aug))
+        else:
+            datasets.append(SyntheticWordDataset(transform=data_transform_no_aug))
+
 
     merged_dataset = ConcatDataset(datasets)
     word_loader = DataLoader(merged_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
