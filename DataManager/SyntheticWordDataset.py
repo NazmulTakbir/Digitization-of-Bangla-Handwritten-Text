@@ -12,7 +12,7 @@ class SyntheticWordDataset(data.Dataset):
         
     def __len__(self):
         # increasing this number increases the proportion synthetic words in the dataset
-        return 100000
+        return 25000
 
     def __getitem__(self, idx):
         while True:

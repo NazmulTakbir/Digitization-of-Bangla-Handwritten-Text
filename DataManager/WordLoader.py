@@ -14,6 +14,16 @@ data_transform_aug = A.Compose([
         ToTensorV2(),
     ])
 
+data_transform_aug_synthetic = A.Compose([ 
+        A.Rotate(limit=10, p=0.5),
+        A.Blur(blur_limit=3, p=0.5),
+        A.OpticalDistortion(p=0.5),
+        A.GridDistortion(p=0.5),
+        A.ElasticTransform(alpha=0.5, sigma=0, alpha_affine=0, p=0.5),
+        A.GaussNoise(var_limit=(120.0, 135.0), mean=0, always_apply=False, p=0.5),       
+        ToTensorV2(),
+    ])
+
 data_transform_no_aug = A.Compose([ 
         ToTensorV2(),
     ])
@@ -35,7 +45,7 @@ def get_word_loader(img_dirs, label_file_paths, augment=True, batch_size=256, nu
 
     if use_synthetic:
         if augment:
-            datasets.append(SyntheticWordDataset(transform=data_transform_aug))
+            datasets.append(SyntheticWordDataset(transform=data_transform_aug_synthetic))
         else:
             datasets.append(SyntheticWordDataset(transform=data_transform_no_aug))
 
