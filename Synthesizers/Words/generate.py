@@ -3,6 +3,7 @@ import os
 import shutil 
 from Synthesizers.utils import crop
 import random
+from tqdm import tqdm
 
 dst = 'Datasets/SyntheticWords/all'
 if os.path.exists(dst):
@@ -17,10 +18,7 @@ lines = open('Datasets/SyntheticWords/labels.csv', 'r', encoding='utf-8').readli
 lines = [line.strip() for line in lines]
 words = [line[len(line.split(',')[0])+1:] for line in lines]
 
-def word_generator(height, width):
-    word = random.choice(words)
-    font_file = random.choice(font_files)
-    
+def generate_word_image(word, font_file, height, width):
     b_color = random.randint(175, 255)
     t_color = random.randint(0, 75)
 
@@ -31,4 +29,20 @@ def word_generator(height, width):
     draw.text((30, 20), word, font=font, fill=(t_color))
     image = crop(image, b_color, height=height, width=width, min_margin=10, max_margin=30)
 
-    return image, word
+    return image
+
+def word_generator(height, width):
+    word = random.choice(words)
+    font_file = random.choice(font_files)
+    return generate_word_image(word, font_file, height, width), word
+
+if __name__ == "__main__":
+    labels = ""
+    for word_no, word in enumerate(tqdm(words), 1):
+        for font_no, font_file in enumerate(font_files, 1):
+            filename = str(word_no).zfill(5) + '_' + str(font_no).zfill(2) + '.png'
+            labels += filename + ',' + word + '\n'
+            image = generate_word_image(word, font_file, 32, 128)
+            image.save(os.path.join(dst, filename))
+
+open(os.path.join(dst, 'labels.csv'), 'w', encoding='utf-8').write(labels)
