@@ -12,16 +12,38 @@ teacher_data = {
     'img_dir': '/content/ML_Project/Datasets/SyntheticCharacters/train'
 }
 
-student  = Student(graphemes_dict, teacher_data=teacher_data)
+student  = Student(graphemes_dict, teacher_data=teacher_data, variant='syntheticdata')
 
-train_imgs = ['Datasets/Bn-HTRd/train', 'Datasets/Bn-HTRd/val']
-train_labels = ['Datasets/Bn-HTRd/train/labels.csv', 'Datasets/Bn-HTRd/val/labels.csv']
+train_datasets = [
+        {
+            'img_dir': 'Datasets/Bn-HTRd/train',
+            'label_file_path': 'Datasets/Bn-HTRd/train/labels.csv',
+        },
+        {
+            'img_dir': 'Datasets/Bn-HTRd/val',
+            'label_file_path': 'Datasets/Bn-HTRd/val/labels.csv'
+        },
+        {
+            'img_dir': 'Datasets/SyntheticWords/all',
+            'label_file_path': 'Datasets/SyntheticWords/all/labels.csv',
+            'virtual_size': 25000,
+            'synthetic': True
+        },
+    ]
 
-val_imgs = ['Datasets/BanglaWriting/train', 'Datasets/BanglaWriting/val']
-val_labels = ['Datasets/BanglaWriting/train/labels.csv', 'Datasets/BanglaWriting/val/labels.csv']
+val_datasets = [
+        {
+            'img_dir': 'Datasets/BanglaWriting/train',
+            'label_file_path': 'Datasets/BanglaWriting/train/labels.csv'
+        },
+        {
+            'img_dir': 'Datasets/BanglaWriting/val',
+            'label_file_path': 'Datasets/BanglaWriting/val/labels.csv'
+        },
+    ]
 
-train_loader, train_size = get_word_loader(train_imgs, train_labels, augment=True, use_synthetic=True)
-val_loader, val_size = get_word_loader(val_imgs, val_labels, augment=False)
+train_loader, train_size = get_word_loader(train_datasets, augment=True)
+val_loader, val_size = get_word_loader(val_datasets, augment=False)
 
 save_path = '/content/drive/MyDrive/ML-Project-Files/SavedModels'
 

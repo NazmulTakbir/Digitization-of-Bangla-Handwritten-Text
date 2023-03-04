@@ -4,8 +4,10 @@ import numpy as np
 from torch.utils import data
 from Graphemes.utils import skip_chars
 from ImageProcessing.image_processing import adjust_contrast_grey
+import random
+
 class WordDataset(data.Dataset):
-    def __init__(self, img_dir, label_file_path, inp_h=32, inp_w=128, transform=None):
+    def __init__(self, img_dir, label_file_path, virtual_size=-1, inp_h=32, inp_w=128, transform=None):
         """
             label_file is a csv file with the following format:
             filename1,word1
@@ -19,6 +21,7 @@ class WordDataset(data.Dataset):
         self.inp_h = inp_h
         self.inp_w = inp_w
         self.transform = transform
+        self.virtual_size = virtual_size
 
         label_file = open(label_file_path, "r").readlines()
         img_names = [line.split(",")[0] for line in label_file]
@@ -36,9 +39,15 @@ class WordDataset(data.Dataset):
         self.data = list(zip(filtered_img_paths, filtered_words))
         
     def __len__(self):
-        return len(self.data)
+        if self.virtual_size == -1:
+            return len(self.data)
+        else:
+            return self.virtual_size
 
     def __getitem__(self, idx):
+        if self.virtual_size != -1:
+            idx = random.randint(0, len(self.data)-1)
+            
         image = cv2.imread(self.data[idx][0])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image = adjust_contrast_grey(image)

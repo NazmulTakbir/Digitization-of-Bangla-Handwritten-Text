@@ -13,7 +13,7 @@ from Models.Teacher.Teacher import Teacher
 
 class Student:
 
-    def __init__(self, graphemes_dict, extractor_type='VGG', teacher_data=None):
+    def __init__(self, graphemes_dict, extractor_type='VGG', teacher_data=None, variant=""):
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -26,6 +26,9 @@ class Student:
             self.student_type = extractor_type + '_noteacher'
         else:
             self.student_type = extractor_type + f"_hasteacher_{teacher_data['teacher_type']}"
+        
+        if len(variant) > 0:
+            self.student_type += '_'+variant
         
         self.model = CRNN(extractor_type, self.n_classes)
         self.model.to(self.device)
