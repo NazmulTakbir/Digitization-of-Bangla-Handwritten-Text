@@ -116,6 +116,7 @@ class Student:
             slf.starting_epoch = 1
             slf.metrics['Epochs']['total'] = epochs
             shutil.rmtree(slf.checkpoint_folder) if os.path.exists(slf.checkpoint_folder) else None
+            os.makedir(slf.checkpoint_folder)
 
     def train(slf, train_loader, val_loader, checkpoint_root, resume=False, epochs=30, lr = 0.0003):
         slf.init_training(lr)
