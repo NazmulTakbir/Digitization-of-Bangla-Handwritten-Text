@@ -25,7 +25,7 @@ class Student:
         slf.teacher_data = teacher_data
 
         slf.student_type = 'student_' + extractor_type
-        slf.student_type += f"_{teacher_data['teacher_type']}" if teacher_data is not None else '_noteacher'
+        slf.student_type += f"_teacher_{teacher_data['teacher_type']}" if teacher_data is not None else '_noteacher'
         slf.student_type += '_'+variant if len(variant) > 0 else ''
         
         slf.model = CRNN(extractor_type, slf.n_classes)
@@ -116,7 +116,7 @@ class Student:
             slf.starting_epoch = 1
             slf.metrics['Epochs']['total'] = epochs
             shutil.rmtree(slf.checkpoint_folder) if os.path.exists(slf.checkpoint_folder) else None
-            os.makedir(slf.checkpoint_folder)
+            os.mkdir(slf.checkpoint_folder)
 
     def train(slf, train_loader, val_loader, checkpoint_root, resume=False, epochs=30, lr = 0.0003):
         slf.init_training(lr)
@@ -137,6 +137,8 @@ class Student:
             slf.scheduler.step()
             slf.print_stats('Train', save_best=False)
             slf.validate(epoch, val_loader)
+
+            slf.metrics['Epochs']['latest'] = epoch
             slf.save_checkpoint()
 
             print("="*125)
