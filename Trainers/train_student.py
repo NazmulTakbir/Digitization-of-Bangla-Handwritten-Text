@@ -45,6 +45,6 @@ val_datasets = [
 train_loader, train_size = get_word_loader(train_datasets, augment=True)
 val_loader, val_size = get_word_loader(val_datasets, augment=False)
 
-save_path = '/content/drive/MyDrive/ML-Project-Files/SavedModels'
+checkpoint_root='/content/drive/MyDrive/ML-Project-Files/Checkpoints'
 
-student.train(train_loader, val_loader, save_path, epochs=50)
+student.train(train_loader, val_loader, checkpoint_root=checkpoint_root, resume=False, epochs=100)

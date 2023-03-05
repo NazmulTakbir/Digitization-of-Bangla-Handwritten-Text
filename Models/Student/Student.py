@@ -211,10 +211,10 @@ class Student:
         print("\n")
 
     def load_checkpoint(slf):
-        self.model.load_state_dict(torch.load(self.model_ckt))
-        self.optimizer.load_state_dict(torch.load(self.optimizer_ckt))
-        self.scheduler.load_state_dict(torch.load(self.scheduler_ckt))
-        self.metrics = json.load(open(self.metrics_ckt, 'r'))
+        slf.model.load_state_dict(torch.load(slf.model_ckt))
+        slf.optimizer.load_state_dict(torch.load(slf.optimizer_ckt))
+        slf.scheduler.load_state_dict(torch.load(slf.scheduler_ckt))
+        slf.metrics = json.load(open(slf.metrics_ckt, 'r'))
 
     def save_checkpoint(slf):
         torch.save(slf.model.state_dict(), slf.model_ckt)
