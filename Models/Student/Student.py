@@ -4,7 +4,9 @@ from tqdm import tqdm
 from torch import nn
 import numpy as np
 import os
+import shutil
 import warnings
+import json
 
 from Graphemes.extract_graphemes import decode_prediction, decode_label, words_to_labels
 from .CRNN import CRNN
@@ -13,56 +15,55 @@ from Models.Teacher.Teacher import Teacher
 
 class Student:
 
-    def __init__(self, graphemes_dict, extractor_type='VGG', teacher_data=None, variant=""):
+    def __init__(slf, graphemes_dict, extractor_type='VGG', teacher_data=None, variant=""):
 
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        slf.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-        self.graphemes_dict = graphemes_dict
-        self.inv_graphemes_dict = {v: k for k, v in graphemes_dict.items()}
-        self.n_classes = len(graphemes_dict)+1
+        slf.graphemes_dict = graphemes_dict
+        slf.inv_graphemes_dict = {v: k for k, v in graphemes_dict.items()}
+        slf.n_classes = len(graphemes_dict)+1
+        slf.teacher_data = teacher_data
 
-        self.teacher_data = teacher_data
-        if teacher_data is None:
-            self.student_type = extractor_type + '_noteacher'
-        else:
-            self.student_type = extractor_type + f"_hasteacher_{teacher_data['teacher_type']}"
+        slf.student_type = 'student_' + extractor_type
+        slf.student_type += f"_{teacher_data['teacher_type']}" if teacher_data is not None else '_noteacher'
+        slf.student_type += '_'+variant if len(variant) > 0 else ''
         
-        if len(variant) > 0:
-            self.student_type += '_'+variant
-        
-        self.model = CRNN(extractor_type, self.n_classes)
-        self.model.to(self.device)
-        self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True).to(self.device)
+        slf.model = CRNN(extractor_type, slf.n_classes)
+        slf.model.to(slf.device)
+        slf.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True).to(slf.device)
 
-    def init_teacher(self):
-        self.teacher = Teacher(self.teacher_data['teacher_type'], n_classes=self.n_classes)
-        self.teacher.generate_prediction_dict(self.teacher_data['saved_path'], self.teacher_data['img_dir'], t=self.t)
+    def init_teacher(slf):
+        slf.teacher = Teacher(slf.teacher_data['teacher_type'], n_classes=slf.n_classes)
+        slf.teacher.generate_prediction_dict(slf.teacher_data['saved_path'], slf.teacher_data['img_dir'], t=slf.t)
 
-    def init_training(self, lr, save_dir):
-        self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr, weight_decay=1e-05)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=15, T_mult=1, eta_min=0.0001)
-        self.best_wrr = 0
-        self.best_epoch = 0
-        self.save_dir = save_dir
-        self.alpha = 0.5
-        self.t = 2
-        self.init_teacher()
+    def init_training(slf, lr):
+        slf.optimizer = optim.Adam(filter(lambda p: p.requires_grad, slf.model.parameters()), lr, weight_decay=1e-05)
+        slf.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(slf.optimizer, T_0=15, T_mult=1, eta_min=0.0001)
+        slf.alpha = 0.5
+        slf.t = 2
+        slf.metrics = {
+                       'Train': {'loss': [], 'wrr': [], 'crr': [], 'accuracy': [], 'total_ned': [], 'abs_match': [], 'f1_micro': [], 'f1_macro': []}, 
+                       'Validation': {'loss': [], 'wrr': [], 'crr': [], 'accuracy': [], 'total_ned': [], 'abs_match': [], 'f1_micro': [], 'f1_macro': []},
+                       'Epochs': {'total': 0, 'best': 0, 'latest': 0},
+                       'Best': {'wrr': 0}
+                      }
 
-    def init_epoch(self, epoch, train=True):
+    def init_epoch(slf, epoch, train=True):
         if train:
-            self.model.train()
+            slf.model.train()
         else:
-            self.model.eval()
-        self.y_true = []
-        self.y_pred = []
-        self.decoded_preds = []
-        self.decoded_labels = []
-        self.batch_loss = 0
-        self.epoch = epoch
+            slf.model.eval()
+        slf.y_true = []
+        slf.y_pred = []
+        slf.decoded_preds = []
+        slf.decoded_labels = []
+        slf.batch_loss = 0
+        slf.epoch = epoch
+        slf.init_teacher()
 
-    def add_teacher_loss(self, loss, logits, labels):
-        probs = torch.nn.functional.log_softmax(logits/self.t , dim=2)
-        teacher_probs = self.teacher.get_stacked_probs(labels).cuda()
+    def add_teacher_loss(slf, loss, logits, labels):
+        probs = torch.nn.functional.log_softmax(logits/slf.t , dim=2)
+        teacher_probs = slf.teacher.get_stacked_probs(labels).cuda()
 
         # UserWarning: reduction: 'mean' divides the total loss by both the batch size and the 
         # support size.'batchmean' divides only by the batch size, and aligns with the KL div 
@@ -72,110 +73,150 @@ class Student:
         ty = nn.KLDivLoss(reduction='mean')(probs , teacher_probs)
         warnings.filterwarnings('default', category=UserWarning)
         
-        loss = ty * (self.t*self.t * 2.0 + self.alpha) + loss * (1.-self.alpha)
+        loss = ty * (slf.t*slf.t * 2.0 + slf.alpha) + loss * (1.-slf.alpha)
         return loss
     
-    def forward(self, images, words=None):
-        images = images.to(self.device).float() / 255.
-        logits = self.model(images)
+    def forward(slf, images, words=None):
+        images = images.to(slf.device).float() / 255.
+        logits = slf.model(images)
         probs = torch.nn.functional.log_softmax(logits , dim=2)
-        self.batch_size = images.size(0)
+        slf.batch_size = images.size(0)
 
         if words is not None:
-            labels, label_lengths = words_to_labels(words, self.graphemes_dict)
-            probs_size = torch.tensor([probs.size(0)] * self.batch_size, dtype=torch.long).to(self.device)
+            labels, label_lengths = words_to_labels(words, slf.graphemes_dict)
+            probs_size = torch.tensor([probs.size(0)] * slf.batch_size, dtype=torch.long).to(slf.device)
 
-            loss = self.ctc_loss(probs, labels, probs_size, label_lengths)
-            if self.teacher_data is not None:
-                loss = self.add_teacher_loss(loss, logits, labels)
-            self.batch_loss += loss.item()  
+            loss = slf.ctc_loss(probs, labels, probs_size, label_lengths)
+            if slf.teacher_data is not None:
+                loss = slf.add_teacher_loss(loss, logits, labels)
+            slf.batch_loss += loss.item()  
 
             return probs, labels, loss
         
         return probs
 
-    def train(self, train_loader, val_loader, save_dir, epochs=30, lr = 0.0003):
-        self.init_training(lr, save_dir)
+    def init_checkpointing(slf, epochs, resume, checkpoint_root):
+        slf.checkpoint_folder = os.path.join(checkpoint_root, slf.student_type)
 
-        for epoch in range(1, epochs+1):
-            self.init_epoch(epoch)
-            print("Training Epoch: ", str(epoch)+"/"+str(epochs))
+        slf.model_ckt = os.path.join(slf.checkpoint_folder, 'model.pt')
+        slf.optimizer_ckt = os.path.join(slf.checkpoint_folder, 'optimizer.pt')
+        slf.scheduler_ckt = os.path.join(slf.checkpoint_folder, 'scheduler.pt')
+        slf.metrics_ckt = os.path.join(slf.checkpoint_folder, 'metrics.json')
+
+        slf.best_model = os.path.join(slf.checkpoint_folder, 'best_model.pt')
+        slf.best_samples = os.path.join(slf.checkpoint_folder, 'best_samples.txt')
+
+        if resume:
+            assert os.path.exists(slf.checkpoint_folder), f"Check Point Folder Not Found: {slf.checkpoint_folder}"
+            slf.load_checkpoint()
+            slf.total_epochs = slf.metrics['Epochs']['total']
+            slf.starting_epoch = slf.metrics['Epochs']['latest'] + 1
+        else:
+            slf.total_epochs = epochs
+            slf.starting_epoch = 1
+            slf.metrics['Epochs']['total'] = epochs
+            shutil.rmtree(slf.checkpoint_folder) if os.path.exists(slf.checkpoint_folder) else None
+
+    def train(slf, train_loader, val_loader, checkpoint_root, resume=False, epochs=30, lr = 0.0003):
+        slf.init_training(lr)
+
+        slf.init_checkpointing(epochs, resume, checkpoint_root)
+        for epoch in range(slf.starting_epoch, slf.total_epochs+1):
+            slf.init_epoch(epoch)
+            print("Training Epoch: ", str(epoch)+"/"+str(slf.total_epochs))
             for images, words in tqdm(train_loader):
-                probs, labels, loss = self.forward(images, words)
+                probs, labels, loss = slf.forward(images, words)
                               
-                self.optimizer.zero_grad()
+                slf.optimizer.zero_grad()
                 loss.backward()
-                self.optimizer.step()
+                slf.optimizer.step()
 
-                self.save_mini_batch_results(probs, labels)
+                slf.save_mini_batch_results(probs, labels)
         
-            self.scheduler.step()
-            self.print_stats('Train', save_best=False)
-            self.validate(epoch, val_loader)
+            slf.scheduler.step()
+            slf.print_stats('Train', save_best=False)
+            slf.validate(epoch, val_loader)
+            slf.save_checkpoint()
+
             print("="*125)
     
-    def validate(self, epoch, val_loader, save_best=True):
-        self.init_epoch(epoch, train=False)
+    def validate(slf, epoch, val_loader, save_best=True):
+        slf.init_epoch(epoch, train=False)
         with torch.no_grad():
             print("Validating:")
             for images, words in tqdm(val_loader):
-                probs, labels, loss = self.forward(images, words)
-                self.save_mini_batch_results(probs, labels)
-            self.print_stats('Validation', save_best=save_best)
+                probs, labels, loss = slf.forward(images, words)
+                slf.save_mini_batch_results(probs, labels)
+            slf.print_stats('Validation', save_best=save_best)
 
-    def save_mini_batch_results(self, probs, labels):
+    def save_mini_batch_results(slf, probs, labels):
         _, preds = probs.max(2)
         preds = preds.transpose(1, 0).contiguous().detach().cpu().numpy()
         labels = labels.detach().cpu().numpy()
 
         for pred, label in zip(preds, labels):
-            grapheme_id_list, grapheme = decode_prediction(pred, self.inv_graphemes_dict)
+            grapheme_id_list, grapheme = decode_prediction(pred, slf.inv_graphemes_dict)
 
-            self.decoded_preds.append(grapheme)
-            self.decoded_labels.append(decode_label(label, self.inv_graphemes_dict))
+            slf.decoded_preds.append(grapheme)
+            slf.decoded_labels.append(decode_label(label, slf.inv_graphemes_dict))
 
             min_len = min(len(grapheme_id_list), len(label))
-            self.y_true.extend(grapheme_id_list[:min_len])
-            self.y_pred.extend(list(label)[:min_len])
+            slf.y_true.extend(grapheme_id_list[:min_len])
+            slf.y_pred.extend(list(label)[:min_len])
 
-    def print_stats(self, data_set, save_best):
-        print_metric(f"{data_set} loss", self.batch_loss/self.batch_size)
-        wrr = recognition_metrics(self.decoded_preds, self.decoded_labels, final_action='both')['wrr']
-        accuracy_metrics(self.y_true, self.y_pred, self.n_classes, final_action='print',
-                         target_names=[v for _, v in self.inv_graphemes_dict.items()])
-        self.print_samples()
+    def append_metrics(slf, data_set, wrr, crr, total_ned, abs_match, accuracy, f1_micro, f1_macro):
+        slf.metrics[data_set]['loss'].append(slf.batch_loss/slf.batch_size)
+        slf.metrics[data_set]['wrr'].append(wrr)
+        slf.metrics[data_set]['crr'].append(crr)
+        slf.metrics[data_set]['total_ned'].append(total_ned)
+        slf.metrics[data_set]['abs_match'].append(abs_match)
+        slf.metrics[data_set]['accuracy'].append(accuracy)
+        slf.metrics[data_set]['f1_micro'].append(f1_micro)
+        slf.metrics[data_set]['f1_macro'].append(f1_macro)
+        
+    def print_stats(slf, data_set, save_best):
+        print_metric(f"{data_set} loss", slf.batch_loss/slf.batch_size)
+        results = recognition_metrics(slf.decoded_preds, slf.decoded_labels, final_action='both')
+        wrr, crr, total_ned, abs_match = results['wrr'], results['crr'], results['total_ned'], results['abs_match']
 
-        if save_best and wrr > self.best_wrr:
-            self.best_wrr = wrr
-            self.save_best_model()
+        results = accuracy_metrics(slf.y_true, slf.y_pred, slf.n_classes, final_action='both',
+                         target_names=[v for _, v in slf.inv_graphemes_dict.items()])
+        accuracy, f1_micro, f1_macro = results['accuracy'], results['f1_micro'], results['f1_macro']
+        
+        slf.append_metrics(data_set, wrr, crr, total_ned, abs_match, accuracy, f1_micro, f1_macro)
+        
+        slf.print_samples()
 
-    def save_best_model(self):
-        prev_model = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt") 
-        if os.path.exists(prev_model):
-            os.remove(prev_model)
-        prev_samples = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
-        if os.path.exists(prev_samples):
-            os.remove(prev_samples)
-        self.best_epoch = self.epoch
-        self.save_model(os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.pt"))
-        self.save_samples()
+        if save_best and wrr > slf.metrics['Best']['wrr']:
+            slf.metrics['Best']['wrr'] = wrr
+            slf.metrics['Epochs']['best'] = slf.epoch
+            slf.save_best_model()
 
-    def print_samples(self, sample_size=5):
-        total = len(self.decoded_preds)
+    def save_best_model(slf):
+        os.remove(slf.best_model) if os.path.exists(slf.best_model) else None 
+        os.remove(slf.best_samples) if os.path.exists(slf.best_samples) else None
+        
+        torch.save(slf.model.state_dict(), slf.best_model)
+        with open(slf.best_samples, 'w') as f:
+            for i in range(len(slf.decoded_preds)):
+                f.write(f"{slf.decoded_labels[i]}::{slf.decoded_preds[i]}\n")
+
+    def print_samples(slf, sample_size=5):
+        total = len(slf.decoded_preds)
         sample = np.random.choice(total, sample_size, replace=False)
         print("Actual :: Predicted", end="  |||  ")
         for i in sample:
-            print(f"{self.decoded_labels[i]} :: {self.decoded_preds[i]}", end="  |||  ")
+            print(f"{slf.decoded_labels[i]} :: {slf.decoded_preds[i]}", end="  |||  ")
         print("\n")
 
-    def save_samples(self):
-        res_path = os.path.join(self.save_dir, f"student_{self.student_type}_{str(self.best_epoch).zfill(3)}.txt")
-        with open(res_path, 'w') as f:
-            for i in range(len(self.decoded_preds)):
-                f.write(f"{self.decoded_labels[i]}::{self.decoded_preds[i]}\n")
+    def load_checkpoint(slf):
+        self.model.load_state_dict(torch.load(self.model_ckt))
+        self.optimizer.load_state_dict(torch.load(self.optimizer_ckt))
+        self.scheduler.load_state_dict(torch.load(self.scheduler_ckt))
+        self.metrics = json.load(open(self.metrics_ckt, 'r'))
 
-    def load_model(self, path):
-        self.model.load_state_dict(torch.load(path))
-
-    def save_model(self, path):
-        torch.save(self.model.state_dict(), path)
+    def save_checkpoint(slf):
+        torch.save(slf.model.state_dict(), slf.model_ckt)
+        torch.save(slf.optimizer.state_dict(), slf.optimizer_ckt)
+        torch.save(slf.scheduler.state_dict(), slf.scheduler_ckt)
+        json.dump(slf.metrics, open(slf.metrics_ckt, 'w'), indent=4)

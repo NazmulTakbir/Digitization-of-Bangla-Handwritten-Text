@@ -21,19 +21,17 @@ def accuracy_metrics(y_true, y_pred, n_classes, target_names, final_action='prin
         f1_macro = 0
         accuracy = 0
 
-    if final_action == 'print':
+    if final_action == 'print' or final_action == 'both':
         print_metric('Accuracy', accuracy)
         print_metric('F1 Micro', f1_micro)
         print_metric('F1 Macro', f1_macro)
 
-    elif final_action == 'return':
+    if final_action == 'return' or final_action == 'both':
         return {
             'accuracy': accuracy,
             'f1_micro': f1_micro,
             'f1_macro': f1_macro,
         }
-    else:
-        raise ValueError('final_action must be either "print" or "return"')
     
 def recognition_metrics(predictions, labels, final_action='print', res_file_path=None):
     all_num = correct_num = norm_edit_dis = total_edit_dist = total_length = 0
